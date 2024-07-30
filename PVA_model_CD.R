@@ -46,6 +46,8 @@ Si.mod <- function(data, par = c(-0.15, 1.10, 0.15, 0.005, 0.15),
         control = control)
 }
 
+
+
 # Data Setup for Analysis - create matrix
 #
 ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -320,9 +322,9 @@ cat.pr <- 0.14/gen.l # probability of catastrophe (Reed et al. 2003)
 # which represents the proportion of individuals expected in each age class when the population reaches equilibrium.
 # This distribution is multiplied by 1000 to scale up the proportions to actual numbers, creating an initial population vector.
 # This vector, 'init.vec', thus represents the initial number of individuals in each age class for the modeled population.
-effective_population <- 1500
-population_size <- 1500
-init.vec <- 1500*stable.stage.dist(popmat)
+effective_population <- 2800
+population_size <- 2800
+init.vec <- 2800*stable.stage.dist(popmat)
 
 # Visualizing the Initial Population Distribution
 # The 'plot' function is used to create a line graph displaying the initial population distribution across age classes.
@@ -333,12 +335,14 @@ init.vec <- 1500*stable.stage.dist(popmat)
 plot(age.vec,init.vec,xlab="age (yrs)", ylab="N", type="l")
 
 
-##      Calculating total population
+##      Calculating total poulation
 #
 ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 
-# plot initaial age distribution vector
+effective_population <- 1500
+
+# plot initial age distribution vector
 plot(age.vec,init.vec,xlab="age (yrs)", ylab="N", type="l")
 
 # calculate the proportion mature in the inital vector
@@ -349,13 +353,12 @@ total_population <- effective_population / proportion_init_mature
 
 
 
-
 ##      Projection setup for stochastic simulations
 #
 ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 ## Initial Population Setup
-start.pop <- 1500
+start.pop <- 2800
 init.vec <- start.pop*stable.stage.dist(popmat.orig) 
 
 ## Time Frame for Projection
@@ -398,7 +401,7 @@ m.sd.vec <- c(rep(0.35, maxlong+1)) #mean and standard deviations vector, juveni
 s.sd.vec <- c(rep(0.15, maxlong+1)) #mean and standard deviations vector, juvenile and adult survival
 
 # Define population vector
-pop.found <- 1500 # change this to change mvp 
+pop.found <- 2800 # change this to change mvp 
 init.vec <- ssd * pop.found #initial population vector
 plot(0:maxlong,ssd,pch=19,type="b")
 
@@ -428,8 +431,8 @@ par(mfrow=c(1,1))
 # Set iterations ----------------------------------------------------------
 age.max <- maxlong
 
-iter <- 100000 # iterations to run for each projection loop change to 10,000 for final run
-itdiv <- iter/1000 #final model rate at iter/1000
+iter <- 100 # iterations to run for each projection loop change to 10,000 for final run
+itdiv <- iter/10 #final model rate at iter/1000
 
 
 # p loop storage
@@ -450,16 +453,16 @@ for (p in 1:length(pop.found.vec)) {
   ## set storage matrices & vectors
   n.sums.mat <- qExt.mat <- matrix(data=NA, nrow=iter, ncol=(t+1))
   
+  # Create a matrix to store the rate of population change ('r') for each year of each iteration
+  r.mat <- matrix(data = 0, nrow = iter, ncol = t)
+  
+  # Initialize a vector to store annual growth rates for the current iteration
+  r.stoch <- rep(0, t)
+  
   for (e in 1:iter) {
     popmat <- popmat.orig # Reset the population matrix to its original configuration at the start of each iteration
     n.mat <- matrix(0, nrow=age.max+1,ncol=(t+1))
     n.mat[,1] <- init.vec
-    
-    # Create a matrix to store the rate of population change ('r') for each year of each iteration
-    r.mat <- matrix(data = 0, nrow = iter, ncol = t)
-    
-    # Initialize a vector to store annual growth rates for the current iteration
-    r.stoch <- rep(0, t)
     
     # Loop through each year of the simulation
     for (i in 1:t) {
@@ -487,9 +490,6 @@ for (p in 1:length(pop.found.vec)) {
       for (x in 1:stages) {
         Sx.stoch[x] <- rbeta(1, Sx.alpha[x], Sx.beta[x])
       }  #end x loop
-      
-      # Update the first row of the population matrix 'popmat' with the stochastic fertility vector
-      #popmat[1, ] <- f.fert.stoch
       
       # Simulates a catastrophic event occurring with a probability 'cat.pr'. The 'rbinom' function is
       # used here to generate a random number from a binomial distribution, where the number of trials
@@ -538,6 +538,7 @@ for (p in 1:length(pop.found.vec)) {
     qExt.mat[e,] <- ifelse(n.sums.mat[e,] < Qthresh, 1, 0)
     
     if (e %% itdiv==0) print(e)
+    
   } # end e loop
   
   n.md <- apply(n.sums.mat, MARGIN=2, median, na.rm=T) # median over all iterations
@@ -568,29 +569,29 @@ for (p in 1:length(pop.found.vec)) {
   par(mfrow=c(1,1))
   
   
-  ######### Growth rate
-  # Calculate mean and 95% confidence intervals for the growth rate 'r' for each year
-  r.mn <- apply(r.mat, MARGIN=2, mean, na.rm=T) 
-  r.up <- apply(r.mat, MARGIN=2, quantile, probs=0.975, na.rm=T) # upper over all iterations
-  r.lo <- apply(r.mat, MARGIN=2, quantile, probs=0.025, na.rm=T)
+  # Calculate mean and 95% confidence intervals for each year's population size
+  for (q in 1:(t+1)) {
+    n.mn[q] <- mean(n.sums.mat[,q]) # Calculate mean population size for year q
+    n.up[q] <- as.vector(quantile(n.sums.mat[,q], probs=0.975)) # 97.5% quantile
+    n.lo[q] <- as.vector(quantile(n.sums.mat[,q], probs=0.025)) # 2.5% quantile
+    
+    ######### Growth rate
+    # Calculate mean and 95% confidence intervals for the growth rate 'r' for each year
+    r.mn <- apply(r.mat, MARGIN=2, mean, na.rm=T) 
+    r.up <- apply(r.mat, MARGIN=2, quantile, probs=0.975, na.rm=T) # upper over all iterations
+    r.lo <- apply(r.mat, MARGIN=2, quantile, probs=0.025, na.rm=T)
+    
+  }
+  # Plot mean population size and confidence intervals over time
+  plot(yrs, n.mn, type="l", xlab="year",ylab="N",xlim=c(yr.now,yr.end),ylim=c(min(n.lo),max(n.up)))
+  lines(yrs, n.up, lty=2, col="red") # Upper confidence limit
+  lines(yrs, n.lo, lty=2, col="red") # Lower confidence limit
   
   # Plot mean growth rate 'r' and its confidence intervals over time
   plot(yrs[-1], r.mn, type="l", xlab="year",ylab="r",xlim=c(yr.now,yr.end),ylim=c(min(r.lo),max(r.up)))
   lines(yrs[-1], r.up, lty=2, col="red") # Upper confidence limit
   lines(yrs[-1], r.lo, lty=2, col="red") # Lower confidence limit
   abline(h=0,lty=3,lwd=2,col="grey") # Reference line at zero growth rate
-  
-  
-  # Calculate mean and 95% confidence intervals for each year's population size
-  for (q in 1:(t+1)) {
-    n.mn[q] <- mean(n.sums.mat[,q]) # Calculate mean population size for year q
-    n.up[q] <- as.vector(quantile(n.sums.mat[,q], probs=0.975)) # 97.5% quantile
-    n.lo[q] <- as.vector(quantile(n.sums.mat[,q], probs=0.025)) # 2.5% quantile
-  }
-  # Plot mean population size and confidence intervals over time
-  plot(yrs, n.mn, type="l", xlab="year",ylab="N",xlim=c(yr.now,yr.end),ylim=c(min(n.lo),max(n.up)))
-  lines(yrs, n.up, lty=2, col="red") # Upper confidence limit
-  lines(yrs, n.lo, lty=2, col="red") # Lower confidence limit
   
   
   
