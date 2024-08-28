@@ -215,8 +215,8 @@ pred.p.mat5 <- ifelse(pred.p.mat4 < 0.001, 0, pred.p.mat4)
 litt.pred2 <- coef(fit.loglit)[1] / (1+(age.vec/coef(fit.loglit)[2])^coef(fit.loglit)[3]) 
 
 # Combine the predicted proportion mature and the predicted litter size to calculate the average fertility vector.
-# The factor of 0.25 accounts for breeding once every 4 years
-f.fert.vec <- 0.31746 * (pred.p.mat5*litt.pred2) #  * 0.25 in all cases
+#####Change this to account for calving period - breeding once every 3.15 years
+f.fert.vec <- 0.31746 * (pred.p.mat5*litt.pred2) #  * 0.31746
 
 
 f.fert.vec
@@ -337,7 +337,7 @@ init.vec <- 1400*stable.stage.dist(popmat)
 plot(age.vec,init.vec,xlab="age (yrs)", ylab="N", type="l")
 
 
-##      Calculating total poulation
+##      Calculating total population
 #
 ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 

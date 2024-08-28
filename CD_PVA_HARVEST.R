@@ -1,4 +1,12 @@
 
+############################################
+## Common dolphin population projection model
+############################################
+## Harvesting 
+
+source("CD_PVA_MATRIX.R")
+
+
 ######## Harvesting
 #calculate probability of being caught based on initial age distribution
 total_population <- sum(init.vec)
@@ -8,7 +16,7 @@ prob.vec <- init.vec / total_population
 plot(age.vec, prob.vec, xlab = "age (yrs)", ylab = "prob bycatch",
      type = "l", col = "blue")
 
-# to plot inital age distiution and probabilty on the same graph
+# to plot initial age distribution and probabilty on the same graph
 plot(age.vec, init.vec, xlab = "age (yrs)", ylab = "N", type = "l", col = "blue")
 
 par(new = TRUE)
@@ -18,6 +26,105 @@ mtext("prob bycatch", side = 4, line = 3, col = "red")
 
 sum(prob.vec)
 
+
+
+##      Projection setup
+## This section sets up the time frame for the population projection in one-year increments.
+yr.now <- 2022  # Current year for the projection start.
+yr.end <- 2050 # # Target end year for the projection.
+t <- (yr.end - yr.now) # Total number of years over which the projection will run.
+
+# Revert the population matrix to its original state (to make sure we start with a clean slate).
+popmat <- popmat.orig # Use the original population matrix as the baseline for projection.
+
+
+## Initialize the population storage matrix
+# Create a matrix to store population vectors for each year of the projection.
+n.mat <- matrix(0,nrow=stages,ncol=(t+1)) # The matrix has a column for each year from yr.now to yr.end.
+n.mat[,1] <- init.vec  # The initial population vector is set as the first column of the matrix.
+
+# Stochastic projection simulation
+# This loop simulates population changes over time under the specified conditions using the Leslie matrix model.
+
+for (i in 1:t) {
+  n.mat[,i+1] <- popmat %*% n.mat[,i]  # Multiply the current population vector by the population matrix to get the next year's population vector.
+}
+
+## Create a vector of years for plotting.
+yrs <- seq(yr.now,yr.end,1) # Sequence of years from start to end of projection.
+
+# Plot the total population over time
+# This plot visualizes how the total population is expected to change from yr.now to yr.end.
+plot(yrs,as.vector(colSums(n.mat)),type="l",xlab="year",ylab="N",xlim=c(yr.now,yr.end))
+# 'type="l"' creates a line graph, which is helpful for showing trends in population changes over time.
+
+
+## Initial Population Setup
+start.pop <- 1400 # Initialize the starting population size at 1000 individuals
+# multiplies this starting population size by the stable stage distribution calculated from the original population matrix (popmat.orig), ensuring that the population structure is balanced across life stages at the outset.
+init.vec <- start.pop*stable.stage.dist(popmat.orig) ## Calculate the initial population vector adjusted by the stable stage distribution of the original population matrix
+
+## Time Frame for Projection
+yr.now <- 2024 #Define the current year for the start of the projection
+yr.end <- 2100 # Define the end year for the projection, setting a long-term analysis
+
+##Time Projection Setup
+# Purpose: To establish the timeframe over which the population will be projected.
+# Implementation: Calculates the total number of years (t) for the projection based on the difference between the start (yr.now) and end (yr.end) years, and creates a sequence of those years (yrs).
+# Define the number of years for the projection based on the start and end years.
+t <- (yr.end - yr.now) # Total years for projection
+yrs <- seq(yr.now,yr.end,1) # Vector of years from start to end
+
+## Density-Feedback Function for Population Regulation:
+# Purpose: To model the effect of population density on fertility rates, simulating natural density-dependent mechanisms that regulate population growth.
+# Implementation: Defines a carrying capacity (K) as a multiple of the starting population and creates a fertility reduction factor that decreases as the population size approaches this capacity. A linear model (lm) is used to fit these changes, which will adjust fertility rates in the projection.
+
+K <- 3*start.pop # Define a carrying capacity as three times the starting population.
+
+# Create a fertility reduction factor that scales with population size, aiming to simulate density-dependent fertility.
+fert.min.mult <- 0.7 # Minimum multiplier for fertility reduction
+i.K <- start.pop:K # Range from current population size to carrying capacity
+# Calculate a multiplier for fertility that decreases as population size approaches carrying capacity.
+fert.mult <- 1 - cumsum(rep((1 - fert.min.mult)/length(i.K), length(i.K)))
+# Fit a linear model to describe how the fertility multiplier changes with population size.
+i.K.fit <- lm(fert.mult ~ i.K)
+
+plot(i.K, fert.mult, pch=10, xlab = "Population Size", ylab = "Fertility Multiplier", type="p", col = "blue")
+
+# Add the linear model fit to the plot
+abline(i.K.fit, col = "red")
+
+# Display the summary of the linear model
+summary(i.K.fit)
+
+#Population Matrix + Projection iteration Setup + Storage
+## Population matrix setup
+# Purpose: To initialize the structure that will store population counts over time for simulation.
+# Implementation: Creates a matrix (n.mat) where each column represents a year and each row an age class. The initial population distribution is set in the first column.
+# Initialize a population matrix with zeros, where rows represent stages and columns represent time steps.
+n.mat <- matrix(0,nrow=stages,ncol=(t+1))
+n.mat[,1] <- init.vec  # Set the initial population vector as the first column
+popmat <- popmat.orig # Reset the population matrix to its original state for the simulation
+
+## Stochastic Projection Iterations
+# Purpose: To perform multiple simulations of population projections under varying conditions to capture uncertainty and variability in population dynamics.
+# Implementation: Specifies the number of iterations (iter) for the stochastic projections and sets up for detailed simulation processes in the subsequent lines 
+# Define the number of iterations for the stochastic projection to simulate variability.
+iter <- 1000 # Number of stochastic iterations
+itdiv <- iter/100 # Interval for progress reporting
+
+# Set up storage matrices and vectors for simulation results
+# Create a matrix to store total population summaries for each iteration and each time step
+# This matrix has 'iter' rows (one for each iteration) and 't+1' columns (one for each time point including the initial state)
+n.sums.mat <- matrix(data = 0, nrow = iter, ncol = (t+1))
+
+# Create a matrix to store the rate of population change ('r') for each year of each iteration
+# This matrix has 'iter' rows and 't' columns (one for each year of the projection)
+r.mat <- matrix(data = 0, nrow = iter, ncol = t)
+
+# Initialize vectors to store the weighted mean age and total length (TL) for the population at the end of each iteration
+# Both vectors are set to zero and have a length equal to the number of iterations
+age.wm.vec <- TL.wm.vec <- rep(0, iter)
 
 # set harvest loop
 # harvest as multiples of age.yr.f, where 0*prop.caught = current harvest, 0.5*prop.caught = 50% more than now, 1*prop.caught = double now
@@ -31,7 +138,7 @@ for (h in 1:lharv) {
   # Set storage matrices & vectors
   n.sums.mat <- matrix(data = 0, nrow = iter, ncol = (t + 1))
   r.mat <- matrix(data = 0, nrow = iter, ncol = t)
-  age.wm.vec <- TL.wm.vec <- rep(0, iter)
+
   
   
   for (e in 1:iter) {
@@ -102,7 +209,7 @@ for (h in 1:lharv) {
       n.mat[,i+1] <- popmat %*% n.mat[,i] 
       
       ## Harvest
-      n.mat[, i + 1] <- n.mat[, i + 1] - (harv.p.vec[h] * prob.vec * n.mat[, i ]) # Substitute i for 1 in last element for proportional vs. constant harvest, respectively
+      n.mat[, i + 1] <- n.mat[, i + 1] - (harv.p.vec[h] * prob.vec * n.mat[, 1 ]) # Substitute i for 1 in last element for proportional vs. constant harvest, respectively
       n.mat[which(n.mat[, i + 1] < 0), i + 1] <- 0
       
       # Store the logarithm of the ratio of successive total populations to estimate the growth rate
@@ -114,10 +221,6 @@ for (h in 1:lharv) {
     # Store the results of this iteration
     r.mat[e, ] <- r.stoch
     n.sums.mat[e, ] <- as.vector(colSums(n.mat))
-    
-    # Median age & size of final population
-    age.wm.vec[e] <- weighted.mean(x = age.vec, w = n.mat[, (t+1)], na.rm = TRUE)
-    TL.wm.vec[e] <- 308 / (1 + (3.162162 * exp(-0.146 * age.wm.vec[e])))  # Predict TL from weighted mean age
     
     # Print progress periodically
     if (e %% itdiv == 0) print(e)
@@ -132,7 +235,7 @@ for (h in 1:lharv) {
   plot(yrs[(gen.l + 1):(t + 1)], n.mn, type = "l", xlab = "year", ylab = "N", xlim = c(yrs[(gen.l + 1)], yrs[(t + 1)]), ylim = c(min(n.lo), max(n.up)))
   lines(yrs[(gen.l + 1):(t + 1)], n.up, lty = 2, col = "red")
   lines(yrs[(gen.l + 1):(t + 1)], n.lo, lty = 2, col = "red")
-  
+
   # r confidence limits with burn-in
   r.mn <- apply(r.mat[, (gen.l + 1):t], MARGIN = 2, mean, na.rm = TRUE)
   r.up <- apply(r.mat[, (gen.l + 1):t], MARGIN = 2, quantile, probs = 0.975, na.rm = TRUE)
@@ -154,36 +257,34 @@ for (h in 1:lharv) {
   n.min.harv[h] <- median(n.lo, na.rm = TRUE)
   n.min.up[h] <- quantile(n.lo, probs = 0.975, na.rm = TRUE)
   n.min.lo[h] <- quantile(n.lo, probs = 0.025, na.rm = TRUE)
-  age.wm.mn[h] <- mean(age.wm.vec, na.rm = TRUE)
-  age.wm.up[h] <- quantile(age.wm.vec, probs = 0.975, na.rm = TRUE)
-  age.wm.lo[h] <- quantile(age.wm.vec, probs = 0.025, na.rm = TRUE)
   TL.wm.mn[h] <- mean(TL.wm.vec, na.rm = TRUE)
   TL.wm.up[h] <- quantile(TL.wm.vec, probs = 0.975, na.rm = TRUE)
   TL.wm.lo[h] <- quantile(TL.wm.vec, probs = 0.025, na.rm = TRUE)
   
   print(paste("harvest increment = ", h, sep = ""))
-}
+ }
 
 # Visualizing the results: plotting population trends and changes under different model projections and harvest scenarios.
 # Plotting mean population sizes over time.
-par(mfrow = c(3, 1))
-plot(harv.p.vec, r.mn.harv, type = "l", lwd = 2, ylim = c(-.1, .03), xlab = "", ylab = "mean long-term r")
+par(mfrow = c(1, 1))
+plot(harv.p.vec, r.mn.harv, type = "l", lwd = 2, ylim = c(-.1, .03), xlab = "bycatch multiplier on current rate", ylab = "mean long-term r")
 abline(h = 0, lty = 2, col = "red")
 lines(harv.p.vec, r.mn.lo, lty = 2, lwd = 1)
 lines(harv.p.vec, r.mn.up, lty = 2, lwd = 1)
 
-plot(harv.p.vec, n.mn.harv, type = "l", lwd = 2, ylim = c(min(n.mn.lo), max(n.mn.up)), xlab = "", ylab = "mean long-term N")
+plot(harv.p.vec, r.mn.harv, type = "l", lwd = 2, ylim = range(r.mn.harv, r.mn.lo, r.mn.up), xlab = "bycatch multiplier on current rate", ylab = "mean long-term r")
+abline(h = 0, lty = 2, col = "red")
+lines(harv.p.vec, r.mn.lo, lty = 2, lwd = 1)
+lines(harv.p.vec, r.mn.up, lty = 2, lwd = 1)
+
+plot(harv.p.vec, n.mn.harv, type = "l", lwd = 2, ylim = c(min(n.mn.lo), max(n.mn.up)), xlab = "bycatch multiplier on current rate", ylab = "mean long-term N")
 lines(harv.p.vec, n.mn.lo, lty = 2, lwd = 1)
 lines(harv.p.vec, n.mn.up, lty = 2, lwd = 1)
 
-plot(harv.p.vec, n.min.harv, type = "l", lwd = 2, ylim = c(min(n.min.lo), max(n.min.up)), xlab = "harvest multiplier on current rate", ylab = "mean long-term N min")
+plot(harv.p.vec, n.min.harv, type = "l", lwd = 2, ylim = c(min(n.min.lo), max(n.min.up)), xlab = "bycatch multiplier on current rate", ylab = "mean long-term N min")
 lines(harv.p.vec, n.min.lo, lty = 2, lwd = 1)
 lines(harv.p.vec, n.min.up, lty = 2, lwd = 1)
 par(mfrow = c(1, 1))
 
-par(mfrow = c(2, 1))
-plot(harv.p.vec, age.wm.mn, type = "l", lwd = 2, ylim = c(min(age.wm.lo), max(age.wm.up)), ylab = "wmn age (yrs) of final pop", xlab = "harvest multiplier")
-lines(harv.p.vec, age.wm.lo, lty = 2, lwd = 1)
-lines(harv.p.vec, age.wm.up, lty = 2, lwd = 1)
 
-  
+

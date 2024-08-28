@@ -11,7 +11,7 @@ source("CD_PVA_MATRIX.R")
 ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 ## Initial Population Setup
-start.pop <- 1400
+start.pop <- 1400 # half of estimated total pop to represent females only, assuming 1:1 sex ratio
 init.vec <- start.pop*stable.stage.dist(popmat.orig) 
 
 ## Time Frame for Projection

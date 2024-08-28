@@ -48,6 +48,7 @@ Si.mod <- function(data, par = c(-0.15, 1.10, 0.15, 0.005, 0.15),
 
 
 
+
 # Data Setup for Analysis - create matrix
 #
 ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -358,7 +359,7 @@ total_population <- effective_population / proportion_init_mature
 ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 ## Initial Population Setup
-start.pop <- 2800
+start.pop <- 1400
 init.vec <- start.pop*stable.stage.dist(popmat.orig) 
 
 ## Time Frame for Projection
