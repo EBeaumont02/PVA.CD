@@ -161,6 +161,10 @@ out.mat[sub.mat,]
 mat.fit2.out <- data.frame(age.vec.cont, pred.p.mat2)
 
 
+
+
+
+
 # Litter size data
 ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -189,7 +193,6 @@ litt.pred.p.matt <- ifelse(litt.pred.p.mat > 1, 1, litt.pred.p.mat)# Ensuring pr
 
 # Add the model predictions to the plot to compare with the observed data.
 lines(litt.age.vec.cont ,litt.pred.p.matt,lty=2,lwd=3,col="red")
-
 
 ## Building average fertility vector for matrix
 ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -235,6 +238,29 @@ age.vec <- seq(0, 29, 1)
 surv.data<- read.table("surv.data.csv",header=T,sep=",")
 surv.vec <- surv.data$surv
 data<-data.frame(age.vec,surv.vec)
+
+
+# Load the ggplot2 library for visualization
+library(ggplot2)
+
+
+# Create the bar chart with blue bars and customized appearance
+ggplot(data, aes(x = factor(age.vec), y = surv.vec)) + 
+  geom_bar(stat = "identity", fill = "#035096") +
+  labs(x = "age", y = "number of individuals") +  # Add labels
+  theme_minimal() +  # Minimal theme
+  theme(
+    panel.grid = element_blank(),          # Remove grid lines
+    axis.line = element_line(color = "black"),  # Set both axes to black
+    axis.text = element_text(color = "black"),  # Set axis text color to black
+    axis.title = element_text(color = "black"),  # Set axis title text to black
+    axis.ticks = element_line(color = "black")   # Set tick marks to black
+  ) +
+  scale_y_continuous(expand = c(0, 0),  # Remove space between x-axis and bars
+                     breaks = seq(0, ceiling(max(surv.vec)), by = 1),  # Y-axis from 0 to max
+                     limits = c(0, ceiling(max(surv.vec)))) +  # Y-axis limits start at 0
+  coord_cartesian(clip = "off", ylim = c(0, ceiling(max(surv.vec))))
+
 
 #input data into siler model
 Si.mod.out <- Si.mod(surv.data)
@@ -282,6 +308,7 @@ plot(age.vec, surv.vec, pch = 19, col = "black",
      xlab = "Age", ylab = "Survival Probability", 
      type = "p")
 lines(age.vec[-length(age.vec)], surv.vec[-length(surv.vec)], col = "black")
+
 
 ## Populating the matrix
 ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -332,8 +359,8 @@ cat.pr <- 0.14/gen.l # probability of catastrophe (Reed et al. 2003)
 # The 'stable.stage.dist(popmat)' function calculates the stable stage distribution for the population,
 # which represents the proportion of individuals expected in each age class when the population reaches equilibrium.
 # This distribution is multiplied by 1000 to scale up the proportions to actual numbers, creating an initial population vector.
-# This vector, 'init.vec', thus represents the initial proportion of individuals in each age class for the modeled population.
-init.vec <- 1000*stable.stage.dist(popmat)
+# This vector, 'init.vec.age', thus represents the initial proportion of individuals in each age class for the modeled population.
+init.vec.age <- 1000*stable.stage.dist(popmat)
 
 # Visualizing the Initial Population Distribution
 # The 'plot' function is used to create a line graph displaying the initial population distribution across age classes.
@@ -341,20 +368,20 @@ init.vec <- 1000*stable.stage.dist(popmat)
 # in each age class. The labels for the x and y axes are set to "age (yrs)" and "N" respectively, indicating the age in years
 # and the number of individuals. The 'type="l"' argument specifies that the data should be plotted as a line rather than points,
 # providing a clear visual representation of how the initial population is distributed across age classes.
-plot(age.vec,init.vec,xlab="age (yrs)", ylab="N", type="l")
+plot(age.vec,init.vec.age,xlab="age (yrs)", ylab="N", type="l")
 
 
 ##      Calculating total population
 ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 # use the effective population size provided in Möller et al 2024 and halve this to account for females only (1:1 sex ratio)
-effective_population <- 2660 * 0.5
+effective_population <- 1533.6 * 0.5
 
 # plot initial age distribution vector
-plot(age.vec,init.vec,xlab="age (yrs)", ylab="N", type="l")
+plot(age.vec,init.vec.age,xlab="age (yrs)", ylab="N", type="l")
 
 # calculate the proportion mature in the initial vector
-proportion_init_mature <- sum(init.vec[age.vec > 6]) / sum(init.vec)
+proportion_init_mature <- sum(init.vec.age[age.vec > 6]) / sum(init.vec.age)
 
 # calculate population using proportion_init_mature
 total_population <- effective_population / proportion_init_mature
@@ -367,5 +394,7 @@ init.vec.total.pop <- total_population*stable.stage.dist(popmat)
 # in each age class. The labels for the x and y axes are set to "age (yrs)" and "N" respectively, indicating the age in years
 # and the number of individuals. The 'type="l"' argument specifies that the data should be plotted as a line rather than points,
 # providing a clear visual representation of how the initial population is distributed across age classes.
-plot(age.vec,init.vec.total.pop,xlab="age (yrs)", ylab="N", type="l")
+plot(age.vec,init.vec.total.pop,xlab="Age (yrs)", ylab="Number of individuals (N)", type="l")
+
+
 

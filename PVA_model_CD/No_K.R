@@ -1,7 +1,7 @@
 ############################################
 ## Common dolphin population projection model
 ############################################
-## Population projection & growth rate 
+## Population projection & growth rate _ NO STOCHASTICITY
 
 source("CD_PVA_MATRIX.R")
 
@@ -26,29 +26,6 @@ yr.end <- 2100 # Define the end year for the projection, setting a long-term ana
 # Define the number of years for the projection based on the start and end years.
 t <- (yr.end - yr.now) # Total years for projection
 yrs <- seq(yr.now,yr.end,1) # Vector of years from start to end
-
-## Density-Feedback Function for Population Regulation:
-##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-# Purpose: To model the effect of population density on fertility rates, simulating natural density-dependent mechanisms that regulate population growth.
-# Implementation: Defines a carrying capacity (K) as a multiple of the starting population and creates a fertility reduction factor that decreases as the population size approaches this capacity. A linear model (lm) is used to fit these changes, which will adjust fertility rates in the projection.
-
-K <- 3*start.pop # Define a carrying capacity as three times the starting population.
-
-# Create a fertility reduction factor that scales with population size, aiming to simulate density-dependent fertility.
-fert.min.mult <- 0.7 # Minimum multiplier for fertility reduction
-i.K <- start.pop:K # Range from current population size to carrying capacity
-# Calculate a multiplier for fertility that decreases as population size approaches carrying capacity.
-fert.mult <- 1 - cumsum(rep((1 - fert.min.mult)/length(i.K), length(i.K)))
-# Fit a linear model to describe how the fertility multiplier changes with population size.
-i.K.fit <- lm(fert.mult ~ i.K)
-
-plot(i.K, fert.mult, pch=10, xlab = "Population Size", ylab = "Fertility Multiplier", type="p", col = "blue")
-
-# Add the linear model fit to the plot
-abline(i.K.fit, col = "red")
-
-# Display the summary of the linear model
-summary(i.K.fit)
 
 
 # STEP #7: Population Matrix + Projection iteration Setup + Storage
@@ -106,7 +83,7 @@ for (e in 1:iter) {
     p.mat.stoch
     
     # Apply density feedback to the fertility rate based on current population size relative to a starting threshold
-    fert.multiplier <- ifelse(sum(n.mat[, i]) >= start.pop, as.numeric(coef(i.K.fit)[1] + coef(i.K.fit)[2] * sum(n.mat[, i])), 1)
+    fert.multiplier <- 1
     
     # Construct a fertility vector for the population matrix using the sampled fertility and survival rates
     f.fert.stoch <- 0.317 * (p.mat.stoch * litt.pred2) * fert.multiplier  # Account for resting period between calves 
@@ -200,31 +177,12 @@ library(ggplot2)
 
 data_population_projection <- data.frame(yrs = yrs, n.mn = n.mn, n.lo = n.lo, n.up = n.up)
 
-population_projection <- ggplot(data_population_projection, aes(x = yrs)) +
-  geom_ribbon(aes(ymin = n.lo, ymax = n.up), fill = "#ADD8E6", alpha = 0.8) +  # Light blue shaded area for confidence interval
-  geom_line(aes(y = n.mn), color = "black", size = 0.8) +  # Main line in black, on top of the blue area
-  labs(x = "year", y = "population size (N)") +  
-  theme_classic() +  
-  scale_y_continuous(limits = c(0, max(n.up)),  
-                     breaks = pretty(c(0, max(n.up)), n = 12),  
-                     expand = expansion(mult = c(0.01, 0.01))) +  
-  scale_x_continuous(limits = c(min(yrs), max(yrs)), 
-                     breaks = c(seq(2030, max(yrs), by = 10), 2024),  
-                     expand = expansion(mult = c(0, 0))) +  
-  theme(axis.text = element_text(color = "black", size = 12),  
-        axis.title = element_text(color = "black", size = 14),
-        plot.margin = unit(c(0.5, 0.5, 0.5, 0.5), "cm"))
-
-# Display the plot
-print(population_projection)
-
-
 # Create the plot with y-axis starting from 0
 population_projection <- ggplot(data_population_projection, aes(x = yrs)) +
   geom_line(aes(y = n.mn), color = "black", size = 0.7) +  # Main line in black
   geom_line(aes(y = n.up), color = "black", size = 0.7, linetype = "dashed") +  # Upper confidence limit with dashed line
   geom_line(aes(y = n.lo), color = "black", size = 0.7, linetype = "dashed") +  # Lower confidence limit with dashed line
-  labs(x = "Year", y = "Population size (N)") +  # Add x and y axis labels
+  labs(x = "year", y = "population size (N)") +  # Add x and y axis labels
   theme_classic() +  # Apply classic theme
   scale_y_continuous(limits = c(0, max(n.up)),  # Set y limits to include 0
                      breaks = pretty(c(0, max(n.up)), n = 12),  # More y-axis labels
@@ -232,8 +190,26 @@ population_projection <- ggplot(data_population_projection, aes(x = yrs)) +
   scale_x_continuous(limits = c(min(yrs), max(yrs)), 
                      breaks = c(seq(2040, max(yrs), by = 20), 2024),  # Keep other tick marks but add 2024
                      expand = expansion(mult = c(0, 0))) +  # Reduce gap between first data point and y-axis
-  theme(axis.text = element_text(color = "black", size = 12),  # Adjust axis text size
-        axis.title = element_text(color = "black", size = 14),
+  theme(axis.text = element_text(color = "black", size = 11),  # Adjust axis text size
+        axis.title = element_text(color = "black", size = 12),
+        plot.margin = unit(c(0.5, 0.5, 0.5, 0.5), "cm"))  # Increase margin around the plot to prevent labels being cut off
+
+# Display the plot
+print(population_projection)
+
+population_projection <- ggplot(data_population_projection, aes(x = yrs)) +
+  geom_ribbon(aes(ymin = n.lo, ymax = n.up), fill = "#ADD8E6", alpha = 0.8) +  # Darker blue shaded area with less transparency
+  geom_line(aes(y = n.mn), color = "black", size = 0.7) +  # Main line in black on top of the blue area
+  labs(x = "year", y = "population size (N)") +  # Add x and y axis labels
+  theme_classic() +  # Apply classic theme
+  scale_y_continuous(limits = c(0, max(n.up)),  # Set y limits to include 0
+                     breaks = pretty(c(0, max(n.up)), n = 12),  # More y-axis labels
+                     expand = expansion(mult = c(0.01, 0.01))) +  # Slightly stretch y-axis
+  scale_x_continuous(limits = c(min(yrs), max(yrs)), 
+                     breaks = c(seq(2040, max(yrs), by = 20), 2024),  # Keep other tick marks but add 2024
+                     expand = expansion(mult = c(0, 0))) +  # Reduce gap between first data point and y-axis
+  theme(axis.text = element_text(color = "black", size = 11),  # Adjust axis text size
+        axis.title = element_text(color = "black", size = 12),
         plot.margin = unit(c(0.5, 0.5, 0.5, 0.5), "cm"))  # Increase margin around the plot to prevent labels being cut off
 
 # Display the plot
@@ -260,7 +236,7 @@ growth_rate_projection <- ggplot(data_growth_rate_projection, aes(x = yrs)) +
   geom_line(aes(y = r.mn), color = "black", size = 0.7) +  # Main line for r.mn in black
   geom_line(aes(y = r.up), linetype = "dashed", color = "black", size = 0.7) +  # Upper confidence limit
   geom_line(aes(y = r.lo), linetype = "dashed", color = "black", size = 0.7) +  # Lower confidence limit
-  labs(x = "Year", y = "Growth rate (r)") +  # Add x and y axis labels
+  labs(x = "year", y = "growth rate (r)") +  # Add x and y axis labels
   theme_classic() +  # Apply classic theme
   scale_y_continuous(limits = c(min(r.lo), max(0.01)),  # Set y limits to fit all data
                      breaks = pretty(c(min(r.lo), max(0.01)), n = 10)) +  # More y-axis labels
@@ -275,29 +251,28 @@ growth_rate_projection <- ggplot(data_growth_rate_projection, aes(x = yrs)) +
 # Display the plot
 print(growth_rate_projection)
 
-range_r.mn <- range(r.mn)
-
-mean_value <- mean(r.mn)
-
 growth_rate_projection <- ggplot(data_growth_rate_projection, aes(x = yrs)) +
-  geom_ribbon(aes(ymin = r.lo, ymax = r.up), fill = "#ADD8E6", alpha = 0.8) +  # Light blue shaded area for confidence interval
-  geom_line(aes(y = r.mn), color = "black", size = 0.8) +  # Main line for r.mn in black, on top of the shaded area
-  labs(x = "year", y = "growth rate (r)") +  
-  theme_classic() +  
-  scale_y_continuous(limits = c(min(r.lo), max(0.01)),  
-                     breaks = pretty(c(min(r.lo), max(0.01)), n = 10)) +  
+  geom_ribbon(aes(ymin = r.lo, ymax = r.up), fill = "#ADD8E6", alpha = 0.8) +  # Light blue shaded area for r.lo to r.up
+  geom_line(aes(y = r.mn), color = "black", size = 0.7) +  # Main line for r.mn in black on top of the blue area
+  labs(x = "year", y = "growth rate (r)") +  # Add x and y axis labels
+  theme_classic() +  # Apply classic theme
+  scale_y_continuous(limits = c(min(r.lo), max(0.01)),  # Set y limits to fit all data
+                     breaks = pretty(c(min(r.lo), max(0.01)), n = 10)) +  # More y-axis labels
   scale_x_continuous(limits = c(yr.now, yr.end), 
                      breaks = c(seq(2040, yr.end, by = 20), 2024), 
-                     expand = expansion(mult = c(0, 0))) +  
+                     expand = expansion(mult = c(0, 0))) +  # Reduce space between y-axis and first data point
   geom_hline(yintercept = 0, linetype = "dashed", size = 0.8, color = "red") +  # Reference line at 0
-  theme(axis.text = element_text(color = "black", size = 11),  
+  theme(axis.text = element_text(color = "black", size = 11),  # Adjust axis text size
         axis.title = element_text(color = "black", size = 12), 
-        plot.margin = unit(c(0.5, 0.5, 0.5, 0.5), "cm"))
+        plot.margin = unit(c(0.5, 0.5, 0.5, 0.5), "cm"))  # Adjust margins
 
 # Display the plot
 print(growth_rate_projection)
 
 
+range_r.mn <- range(r.mn)
+
+
 # Restore default plotting parameters
 par(mfrow=c(1,1))
-5
+
